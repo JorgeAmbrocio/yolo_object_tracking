@@ -1,5 +1,5 @@
 # importar la clase de la aplicación
-from app_class_mode import ObjectDetection
+from app_class import ObjectDetection
 
 # Inicializar la aplicación
 config_path = 'model\yolov3.cfg'

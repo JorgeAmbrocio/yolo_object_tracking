@@ -19,8 +19,8 @@ class ObjectDetection:
         self.net = cv2.dnn.readNetFromDarknet(self.config, self.weights)
     
     # Método para detectar objetos en una imagen
-    def detect(self, image_path):
-        image = cv2.imread(image_path)
+    def detect(self, image): # image_path
+        #image = cv2.imread(image_path)
 
         # Obtener las dimensiones de la imagen
         (h, w) = image.shape[:2]
@@ -80,8 +80,8 @@ class ObjectDetection:
     
 
     # Función para dibujar los cuadros delimitadores y las etiquetas en la imagen
-    def draw(self, image_path, boxes, confidences, classIDs, idxs):
-        image = cv2.imread(image_path)
+    def draw(self, image, boxes, confidences, classIDs, idxs):
+        # image = cv2.imread(image_path)
         # Si hay al menos una detección
         if len(idxs) > 0:
             # Recorrer los índices de las detecciones
