@@ -9,4 +9,5 @@ video_analyzer = VideoAnalyzer(config_path, weights_path, labels_path)
 
 # Analizar el video
 video_path = 'object_detection_on_video\\videos\\pasillo_Trim_1.mp4'
+video_path = 'object_detection_on_video\\videos\\pasillo_exterior_1.mp4'
 video_analyzer.analyze(video_path)
