@@ -21,7 +21,13 @@ class VideoAnalyzer:
         ret, frame = cap.read()
         
         # Mientras haya frames
+        index = 0
         while ret:
+            index += 1
+            if index % 25 != 0:
+                ret, frame = cap.read()
+                continue
+
             # Reducir el tamaño del frame al 50%
             frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
