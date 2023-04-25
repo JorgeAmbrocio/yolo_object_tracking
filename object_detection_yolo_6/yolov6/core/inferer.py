@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 import os
 import cv2
+import PIL
 import time
 import math
 import torch
@@ -65,17 +66,24 @@ class Inferer:
 
         LOGGER.info("Switch model to deploy modality.")
 
-    def infer(self, conf_thres, iou_thres, classes, agnostic_nms, max_det, save_dir, save_txt, save_img, hide_labels, hide_conf, view_img=True):
+    def infer(self, conf_thres, iou_thres, classes, agnostic_nms, max_det, save_dir, save_txt, save_img, hide_labels, hide_conf, view_img=True, working_factor=1):
         ''' Model Inference and results visualization '''
         vid_path, vid_writer, windows = None, None, []
         fps_calculator = CalcFPS()
+        working = 0
         for img_src, img_path, vid_cap in tqdm(self.files):
+            
             img, img_src = self.process_image(img_src, self.img_size, self.stride, self.half)
             img = img.to(self.device)
             if len(img.shape) == 3:
                 img = img[None]
                 # expand for batch dim
             t1 = time.time()
+            
+            working += 1
+            if working % working_factor != 0:
+                continue
+            
             pred_results = self.model(img)
             det = non_max_suppression(pred_results, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
             t2 = time.time()
@@ -133,7 +141,7 @@ class Inferer:
                 if img_path not in windows:
                     windows.append(img_path)
                     cv2.namedWindow(str(img_path), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
-                    cv2.resizeWindow(str(img_path), img_src.shape[1], img_src.shape[0])
+                    cv2.resizeWindow(str(img_path), img_src.shape[1] // 2 , img_src.shape[0] // 2)
                 cv2.imshow(str(img_path), img_src)
                 cv2.waitKey(1)  # 1 millisecond
 
