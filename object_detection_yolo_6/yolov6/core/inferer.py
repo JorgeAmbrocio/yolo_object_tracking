@@ -13,6 +13,7 @@ from tqdm import tqdm
 from pathlib import Path
 from PIL import ImageFont
 from collections import deque
+from numpy import random
 
 from yolov6.utils.events import LOGGER, load_yaml
 from yolov6.layers.common import DetectBackend
@@ -22,7 +23,7 @@ from yolov6.utils.nms import non_max_suppression
 from yolov6.utils.torch_utils import get_model_info
 
 class Inferer:
-    def __init__(self, source, webcam, webcam_addr, weights, device, yaml, img_size, half):
+    def __init__(self, source, webcam, webcam_addr, weights, device, yaml, img_size, half, sort_tracker):
 
         self.__dict__.update(locals())
 
@@ -36,6 +37,7 @@ class Inferer:
         self.class_names = load_yaml(yaml)['names']
         self.img_size = self.check_img_size(self.img_size, s=self.stride)  # check image size
         self.half = half
+        self.sort_tracker = sort_tracker
 
         # Switch model to deploy status
         self.model_switch(self.model.model, self.img_size)
@@ -66,11 +68,15 @@ class Inferer:
 
         LOGGER.info("Switch model to deploy modality.")
 
-    def infer(self, conf_thres, iou_thres, classes, agnostic_nms, max_det, save_dir, save_txt, save_img, hide_labels, hide_conf, view_img=True, working_factor=1):
+    def infer(self, conf_thres, iou_thres, classes, agnostic_nms, max_det, save_dir, 
+              save_txt, save_img, hide_labels, hide_conf, view_img=True, 
+              working_factor=1, track=False):
         ''' Model Inference and results visualization '''
         vid_path, vid_writer, windows = None, None, []
         fps_calculator = CalcFPS()
         working = 0
+
+        
         for img_src, img_path, vid_cap in tqdm(self.files):
             
             img, img_src = self.process_image(img_src, self.img_size, self.stride, self.half)
@@ -107,6 +113,7 @@ class Inferer:
 
             if len(det):
                 det[:, :4] = self.rescale(img.shape[2:], det[:, :4], img_src.shape).round()
+                
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
                         xywh = (self.box_convert(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -120,6 +127,31 @@ class Inferer:
 
                         self.plot_box_and_label(img_ori, max(round(sum(img_ori.shape) / 2 * 0.003), 2), xyxy, label, color=self.generate_colors(class_num, True))
 
+                    
+                if track:
+                    dets_to_sort = np.empty((0,6))
+                    for *xyxy, conf, cls in det.cpu().detach().numpy():
+                        dets_to_sort = np.vstack((dets_to_sort, np.array([xyxy[0], xyxy[1], xyxy[2], xyxy[3], conf, cls])))
+
+                    tracked_dets = self.sort_tracker.update(dets_to_sort, False)
+                    tracks = self.sort_tracker.getTrackers()
+                    if len(tracked_dets) > 0:
+                        # bbox_xyxy = tracked_dets[:,:4]
+                        # identities = tracked_dets[:, 8]
+                        # categories = tracked_dets[:, 4]
+                        # confidences = None
+
+                        for t, track in enumerate(tracks):
+                            track_color = (0,0,255)
+
+                            [cv2.line(img_ori, (int(track.centroidarr[i][0]),
+                                            int(track.centroidarr[i][1])), 
+                                            (int(track.centroidarr[i+1][0]),
+                                            int(track.centroidarr[i+1][1])),
+                                            track_color, thickness=2) 
+                                            for i,_ in  enumerate(track.centroidarr) 
+                                                if i < len(track.centroidarr)-1 ] 
+                            
                 img_src = np.asarray(img_ori)
 
             # FPS counter

@@ -2,5 +2,6 @@ venvgpu
 *.pt
 *.mp4
 __pycache__
+__pycache__/
 .vscode
 *.pyc
